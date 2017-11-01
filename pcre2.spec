@@ -1,4 +1,5 @@
-%define posixlib %mklibname pcre2-posix 1
+%define oldposixlib %mklibname pcre2-posix 1
+%define posixlib %mklibname pcre2-posix 2
 %define u8lib %mklibname pcre2-8 0
 %define u16lib %mklibname pcre2-16 0
 %define u32lib %mklibname pcre2-32 0
@@ -8,7 +9,7 @@
 # This is stable release:
 #%%global rcversion RC1
 Name:       pcre2
-Version:    10.23
+Version:    10.30
 Release:    %{?rcversion:0.}1%{?rcversion:.%rcversion}
 %global     myversion %{version}%{?rcversion:-%rcversion}
 Summary:    Perl-compatible regular expression library
@@ -43,13 +44,6 @@ URL:        http://www.pcre.org/
 Source0:    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/%{?rcversion:Testing/}%{name}-%{myversion}.tar.bz2
 # Do no set RPATH if libdir is not /usr/lib
 Patch0:     pcre2-10.10-Fix-multilib.patch
-# Handle memmory allocation failures in pcre2test tool, in upstream after 10.23
-Patch1:     pcre2-10.23-Check-malloc-returns-in-pcre2test.patch
-# Fix a compiler warning, proposed to upstream but not portable before ISO C99
-# Fix a crash when finding a Unicode property for a character with a code
-# point greater than 0x10ffff in UTF-32 library while UTF mode is disabled,
-# upstream bug #2052, in upstream after 10.23
-Patch2:     pcre2-10.23-Fix-32-bit-non-UTF-property-test-crash.patch
 BuildRequires:  autoconf
 BuildRequires:  automake
 BuildRequires:  coreutils
@@ -85,12 +79,13 @@ restricted, and does not give full access to all of PCRE2's facilities.
 %package -n %{posixlib}
 Summary:	Version of the PCRE2 library providing a POSIX-like regex API
 Group:		System/Libraries
+%rename %{oldposixlib}
 
 %description -n %{posixlib}
 Version of the PCRE2 library providing a POSIX-like regex API
 
 %files -n %{posixlib}
-%{_libdir}/libpcre2-posix.so.1*
+%{_libdir}/libpcre2-posix.so.2*
 
 
 %package -n %{u8lib}
