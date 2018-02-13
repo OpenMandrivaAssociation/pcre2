@@ -9,7 +9,7 @@
 # This is stable release:
 #%%global rcversion RC1
 Name:       pcre2
-Version:    10.30
+Version:    10.31
 Release:    %{?rcversion:0.}1%{?rcversion:.%rcversion}
 %global     myversion %{version}%{?rcversion:-%rcversion}
 Summary:    Perl-compatible regular expression library
