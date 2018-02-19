@@ -1,19 +1,21 @@
+%define major 2
+%define umajor 0
 %define oldposixlib %mklibname pcre2-posix 1
-%define posixlib %mklibname pcre2-posix 2
-%define u8lib %mklibname pcre2-8 0
-%define u16lib %mklibname pcre2-16 0
-%define u32lib %mklibname pcre2-32 0
+%define posixlib %mklibname pcre2-posix %{major}
+%define u8lib %mklibname pcre2-8 %{umajor}
+%define u16lib %mklibname pcre2-16 %{umajor}
+%define u32lib %mklibname pcre2-32 %{umajor}
 %define dev %mklibname -d pcre2
 %define static %mklibname -d -s pcre2
 
 # This is stable release:
 #%%global rcversion RC1
-Name:       pcre2
-Version:    10.31
-Release:    %{?rcversion:0.}1%{?rcversion:.%rcversion}
-%global     myversion %{version}%{?rcversion:-%rcversion}
-Summary:    Perl-compatible regular expression library
-Group:      System/Libraries
+Name:		pcre2
+Version:	10.31
+Release:	%{?rcversion:0.}2%{?rcversion:.%rcversion}
+%global		myversion %{version}%{?rcversion:-%rcversion}
+Summary:	Perl-compatible regular expression library
+Group:		System/Libraries
 # the library:                          BSD
 # pcre2test (linked to GNU readline):   BSD (linked to GPLv3+)
 # COPYING:                              see LICENCE file
@@ -39,18 +41,14 @@ Group:      System/Libraries
 # missing:                              GPLv2+ with exception
 # test-driver:                          GPLv2+ with exception
 # testdata:                             Public Domain
-License:    BSD
-URL:        http://www.pcre.org/
-Source0:    ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/%{?rcversion:Testing/}%{name}-%{myversion}.tar.bz2
+License:	BSD
+URL:		http://www.pcre.org/
+Source0:	ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/%{?rcversion:Testing/}%{name}-%{myversion}.tar.bz2
 # Do no set RPATH if libdir is not /usr/lib
-Patch0:     pcre2-10.10-Fix-multilib.patch
-BuildRequires:  autoconf
-BuildRequires:  automake
-BuildRequires:  coreutils
-BuildRequires:  gcc
-BuildRequires:  libtool
-BuildRequires:  make
-BuildRequires:  readline-devel
+Patch0:		pcre2-10.10-Fix-multilib.patch
+BuildRequires:	readline-devel
+BuildRequires:	bzip2-devel
+BuildRequires:	pkgconfig(zlib)
 
 %description
 PCRE2 is a re-working of the original PCRE (Perl-compatible regular
@@ -82,41 +80,40 @@ Group:		System/Libraries
 %rename %{oldposixlib}
 
 %description -n %{posixlib}
-Version of the PCRE2 library providing a POSIX-like regex API
+Version of the PCRE2 library providing a POSIX-like regex API.
 
 %files -n %{posixlib}
-%{_libdir}/libpcre2-posix.so.2*
-
+%{_libdir}/libpcre2-posix.so.%{major}*
 
 %package -n %{u8lib}
 Summary:	UTF-8 version of the PCRE2 library
 Group:		System/Libraries
 
 %description -n %{u8lib}
-UTF-8 version of the PCRE2 library
+UTF-8 version of the PCRE2 library.
 
 %files -n %{u8lib}
-%{_libdir}/libpcre2-8.so.0*
+%{_libdir}/libpcre2-8.so.%{umajor}*
 
 %package -n %{u16lib}
 Summary:	UTF-16 version of the PCRE2 library
 Group:		System/Libraries
 
 %description -n %{u16lib}
-UTF-16 version of the PCRE2 library
+UTF-16 version of the PCRE2 library.
 
 %files -n %{u16lib}
-%{_libdir}/libpcre2-16.so.0*
+%{_libdir}/libpcre2-16.so.%{umajor}*
 
 %package -n %{u32lib}
 Summary:	UTF-32 version of the PCRE2 library
 Group:		System/Libraries
 
 %description -n %{u32lib}
-UTF-32 version of the PCRE2 library
+UTF-32 version of the PCRE2 library.
 
 %files -n %{u32lib}
-%{_libdir}/libpcre2-32.so.0*
+%{_libdir}/libpcre2-32.so.%{umajor}*
 
 %package -n %{dev}
 Summary:	Development files for the PCRE2 library
@@ -127,7 +124,7 @@ Requires:	%{u16lib} = %{EVRD}
 Requires:	%{u32lib} = %{EVRD}
 
 %description -n %{dev}
-Development files for the PCRE2 library
+Development files for the PCRE2 library.
 
 %files -n %{dev}
 %{_libdir}/*.so
@@ -145,7 +142,7 @@ Group:		Development/C
 Requires:	%{dev} = %{EVRD}
 
 %description -n %{static}
-Static library for linking to PCRE2
+Static library for linking to PCRE2.
 
 %files -n %{static}
 %{_libdir}/*.a
@@ -179,6 +176,7 @@ autoreconf -vif
     --enable-pcre2-8 \
     --enable-pcre2-16 \
     --enable-pcre2-32 \
+    --enable-unicode \
     --enable-pcre2grep-callout \
     --enable-pcre2grep-jit \
     --disable-pcre2grep-libbz2 \
@@ -191,12 +189,13 @@ autoreconf -vif
     --enable-static \
     --enable-unicode \
     --disable-valgrind
+
 %make
 
 %install
 %makeinstall_std
 # These are handled by %%doc in %%files
-rm -rf $RPM_BUILD_ROOT%{_docdir}/pcre2
+rm -rf %{buildroot}%{_docdir}/pcre2
 
 %check
 %make check VERBOSE=yes
