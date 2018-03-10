@@ -8,11 +8,14 @@
 %define dev %mklibname -d pcre2
 %define static %mklibname -d -s pcre2
 
+# (tpg) optimize a bit
+%global optflags %{optflags} -Ofast
+
 # This is stable release:
 #%%global rcversion RC1
 Name:		pcre2
 Version:	10.31
-Release:	%{?rcversion:0.}2%{?rcversion:.%rcversion}
+Release:	%{?rcversion:0.}3%{?rcversion:.%rcversion}
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
@@ -88,6 +91,13 @@ Version of the PCRE2 library providing a POSIX-like regex API.
 %package -n %{u8lib}
 Summary:	UTF-8 version of the PCRE2 library
 Group:		System/Libraries
+# GOT: julia-0.6.0-0.1.pre.alpha-omv2015.0.x86_64
+# GOT: lib64pcre2-8_0-10.31-2-omv2015.0.x86_64
+# In order to satisfy the 'libpcre2-8.so.0()(64bit)' dependency, one of the following packages is needed:
+# 1- julia-0.6.0-0.1.pre.alpha-omv2015.0.x86_64: High-level, high-performance dynamic language for technical computing (to install)
+# 2- lib64pcre2-8_0-10.31-2-omv2015.0.x86_64: UTF-8 version of the PCRE2 library (to install)
+# What is your choice? (1-2)
+Conflicts:	julia < 0.6.0-1
 
 %description -n %{u8lib}
 UTF-8 version of the PCRE2 library.
