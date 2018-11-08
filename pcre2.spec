@@ -15,7 +15,7 @@
 #%%global rcversion RC1
 Name:		pcre2
 Version:	10.32
-Release:	%{?rcversion:0.%rcversion.}1
+Release:	%{?rcversion:0.%rcversion.}2
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
@@ -49,6 +49,19 @@ URL:		http://www.pcre.org/
 Source0:	ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/%{?rcversion:Testing/}%{name}-%{myversion}.tar.bz2
 # Do no set RPATH if libdir is not /usr/lib
 Patch0:		pcre2-10.10-Fix-multilib.patch
+# Fix a subject buffer overread in JIT when UTF is disabled and \X or \R has
+# a greater than 1 fixed quantifier, upstream bug #2320, in upstream after
+# 10.32
+Patch1:     pcre2-10.32-Fix-subject-buffer-overread-in-JIT.-Found-by-Yunho-K.patch
+# Fix caseless matching an extended class in JIT mode, upstream bug #2321,
+# in upstream after 10.32
+Patch2:     pcre2-10.32-Fix-an-xclass-matching-issue-in-JIT.patch
+# Fix matching a zero-repeated subroutine call at a start of a pattern,
+# upstream bug #2332, in upstream after 10.32
+Patch3:     pcre2-10.32-Fix-zero-repeated-subroutine-call-at-start-of-patter.patch
+# Fix heap limit checking overflow in pcre2_dfa_match(), upstream bug #2334,
+# in upstream after 10.32
+Patch4:     pcre2-10.32-Fix-heap-limit-checking-overflow-bug-in-pcre2_dfa_ma.patch
 BuildRequires:	readline-devel
 BuildRequires:	bzip2-devel
 BuildRequires:	pkgconfig(zlib)
@@ -158,8 +171,8 @@ Static library for linking to PCRE2.
 %{_libdir}/*.a
 
 %prep
-%setup -q -n %{name}-%{myversion}
-%apply_patches
+%autosetup -p1 -n %{name}-%{myversion}
+
 # Because of multilib patch
 libtoolize --copy --force
 autoreconf -vif
@@ -200,10 +213,10 @@ autoreconf -vif
     --enable-unicode \
     --disable-valgrind
 
-%make
+%make_build
 
 %install
-%makeinstall_std
+%make_install
 # These are handled by %%doc in %%files
 rm -rf %{buildroot}%{_docdir}/pcre2
 
