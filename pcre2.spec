@@ -11,42 +11,15 @@
 # (tpg) optimize a bit
 %global optflags %{optflags} -O3
 
-# This is stable release:
-#%%global rcversion RC1
 Name:		pcre2
-Version:	10.33
-Release:	%{?rcversion:0.%rcversion.}1
+Version:	10.34
+Release:	1
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
-# the library:                          BSD
-# pcre2test (linked to GNU readline):   BSD (linked to GPLv3+)
-# COPYING:                              see LICENCE file
-# LICENSE:                              BSD text and declares Public Domain
-#                                       for testdata
-#Not distributed in binary package
-# aclocal.m4:                           FSFULLR and GPLv2+ with exception
-# ar-lib:                               GPLv2+ with exception
-# autotools:                            GPLv3+ with exception
-# compile:                              GPLv2+ with exception
-# config.sub:                           GPLv3+ with exception
-# depcomp:                              GPLv2+ with exception
-# install-sh:                           MIT
-# ltmain.sh:                            GPLv2+ with exception and GPLv3+ with
-#                                       exception and GPLv3+
-# m4/ax_pthread.m4:                     GPLv3+ with exception
-# m4/libtool.m4:                        FSFULLR and GPLv2+ with exception
-# m4/ltoptions.m4:                      FSFULLR
-# m4/ltsugar.m4:                        FSFULLR
-# m4/ltversion.m4:                      FSFULLR
-# m4/lt~obsolete.m4:                    FSFULLR
-# m4/pcre2_visibility.m4:               FSFULLR
-# missing:                              GPLv2+ with exception
-# test-driver:                          GPLv2+ with exception
-# testdata:                             Public Domain
 License:	BSD
 URL:		http://www.pcre.org/
-Source0:	ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/%{?rcversion:Testing/}%{name}-%{myversion}.tar.bz2
+Source0:	https://ftp.pcre.org/pub/pcre/%{name}-%{version}.zip
 # Do no set RPATH if libdir is not /usr/lib
 Patch0:		pcre2-10.10-Fix-multilib.patch
 BuildRequires:	readline-devel
