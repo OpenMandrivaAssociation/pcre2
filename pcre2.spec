@@ -8,12 +8,14 @@
 %define dev %mklibname -d pcre2
 %define static %mklibname -d -s pcre2
 
+%bcond_without pgo
+
 # (tpg) optimize a bit
 %global optflags %{optflags} -O3
 
 Name:		pcre2
 Version:	10.34
-Release:	1
+Release:	2
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
@@ -22,7 +24,7 @@ URL:		http://www.pcre.org/
 Source0:	https://ftp.pcre.org/pub/pcre/%{name}-%{version}.zip
 # Do no set RPATH if libdir is not /usr/lib
 Patch0:		pcre2-10.10-Fix-multilib.patch
-BuildRequires:	readline-devel
+BuildRequires:	pkgconfig(readline)
 BuildRequires:	pkgconfig(bzip2)
 BuildRequires:	pkgconfig(zlib)
 
@@ -138,12 +140,59 @@ libtoolize --copy --force
 autoreconf -vif
 
 %build
-# There is a strict-aliasing problem on PPC64, bug #881232
-%ifarch ppc64
-%global optflags %{optflags} -fno-strict-aliasing
+%if %{with pgo}
+CFLAGS="%{optflags} -fprofile-instr-generate" \
+CXXFLAGS="%{optflags} -fprofile-instr-generate" \
+LDFLAGS="%{ldflags} -fprofile-instr-generate" \
+%configure \
+%ifarch riscv64
+    --disable-jit \
+    --disable-pcre2grep-jit \
+%else
+    --enable-jit \
+    --enable-pcre2grep-jit \
+%endif
+    --disable-bsr-anycrlf \
+    --disable-coverage \
+    --disable-ebcdic \
+    --disable-fuzz-support \
+    --disable-never-backslash-C \
+    --enable-newline-is-lf \
+    --enable-pcre2-8 \
+    --enable-pcre2-16 \
+    --enable-pcre2-32 \
+    --enable-unicode \
+    --enable-pcre2grep-callout \
+    --enable-pcre2grep-jit \
+    --disable-pcre2grep-libbz2 \
+    --disable-pcre2grep-libz \
+    --disable-pcre2test-libedit \
+    --enable-pcre2test-libreadline \
+    --disable-rebuild-chartables \
+    --enable-percent-zt \
+    --enable-shared \
+    --enable-stack-for-recursion \
+    --disable-static \
+    --enable-unicode \
+    --disable-valgrind
+
+%make_build
+
+make check
+
+unset LD_LIBRARY_PATH
+unset LLVM_PROFILE_FILE
+llvm-profdata merge --output=%{name}.profile *.profile.d
+rm -f *.profile.d
+
+make clean
+
+CFLAGS="%{optflags} -fprofile-instr-use=$(realpath %{name}.profile)" \
+CXXFLAGS="%{optflags} -fprofile-instr-use=$(realpath %{name}.profile)" \
+LDFLAGS="%{ldflags} -fprofile-instr-use=$(realpath %{name}.profile)" \
 %endif
 %configure \
-%ifarch s390 s390x sparc64 sparcv9 riscv64
+%ifarch riscv64
     --disable-jit \
     --disable-pcre2grep-jit \
 %else
@@ -182,4 +231,4 @@ autoreconf -vif
 rm -rf %{buildroot}%{_docdir}/pcre2
 
 %check
-%make check VERBOSE=yes
+make check VERBOSE=yes
