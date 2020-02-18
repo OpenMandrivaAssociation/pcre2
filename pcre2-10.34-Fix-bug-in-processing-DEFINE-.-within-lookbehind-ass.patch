@@ -1,0 +1,144 @@
+From 6f516ffef41280fbd9fd451fc7eab0c9ce98efad Mon Sep 17 00:00:00 2001
+From: ph10 <ph10@6239d852-aaf2-0410-a92c-79f79f948069>
+Date: Sun, 26 Jan 2020 15:31:27 +0000
+Subject: [PATCH] Fix bug in processing (?(DEFINE)...) within lookbehind
+ assertions.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+git-svn-id: svn://vcs.exim.org/pcre2/code/trunk@1212 6239d852-aaf2-0410-a92c-79f79f948069
+Petr Písař: Ported to 10.34.
+
+Signed-off-by: Petr Písař <ppisar@redhat.com>
+---
+ src/pcre2_compile.c  | 20 ++++++++++++++------
+ testdata/testinput1  | 13 +++++++++++++
+ testdata/testinput2  |  4 ++++
+ testdata/testoutput1 | 17 +++++++++++++++++
+ testdata/testoutput2 |  5 +++++
+ 5 files changed, 53 insertions(+), 6 deletions(-)
+
+diff --git a/src/pcre2_compile.c b/src/pcre2_compile.c
+index f2e6b6b..628503c 100644
+--- a/src/pcre2_compile.c
++++ b/src/pcre2_compile.c
+@@ -8836,9 +8836,10 @@ memset(slot + IMM2_SIZE + length, 0,
+ 
+ /* This function is called to skip parts of the parsed pattern when finding the
+ length of a lookbehind branch. It is called after (*ACCEPT) and (*FAIL) to find
+-the end of the branch, it is called to skip over an internal lookaround, and it
+-is also called to skip to the end of a class, during which it will never
+-encounter nested groups (but there's no need to have special code for that).
++the end of the branch, it is called to skip over an internal lookaround or
++(DEFINE) group, and it is also called to skip to the end of a class, during
++which it will never encounter nested groups (but there's no need to have
++special code for that).
+ 
+ When called to find the end of a branch or group, pptr must point to the first
+ meta code inside the branch, not the branch-starting code. In other cases it
+@@ -9316,14 +9317,21 @@ for (;; pptr++)
+     itemlength = grouplength;
+     break;
+ 
+-    /* Check nested groups - advance past the initial data for each type and
+-    then seek a fixed length with get_grouplength(). */
++    /* A (DEFINE) group is never obeyed inline and so it does not contribute to
++    the length of this branch. Skip from the following item to the next
++    unpaired ket. */
++
++    case META_COND_DEFINE:
++    pptr = parsed_skip(pptr + 1, PSKIP_KET);
++    break;
++
++    /* Check other nested groups - advance past the initial data for each type
++    and then seek a fixed length with get_grouplength(). */
+ 
+     case META_COND_NAME:
+     case META_COND_NUMBER:
+     case META_COND_RNAME:
+     case META_COND_RNUMBER:
+-    case META_COND_DEFINE:
+     pptr += 2 + SIZEOFFSET;
+     goto CHECK_GROUP;
+ 
+diff --git a/testdata/testinput1 b/testdata/testinput1
+index f5159d6..959d4b8 100644
+--- a/testdata/testinput1
++++ b/testdata/testinput1
+@@ -6386,4 +6386,17 @@ ef) x/x,mark
+ /^(?<A>a)(?(<A>)b)((?<=b).*)$/
+     abc
+ 
++"(?<=X(?(DEFINE)(A)))X(*F)"
++\= Expect no match
++    AXYZ
++
++"(?<=X(?(DEFINE)(A)))."
++    AXYZ
++
++"(?<=X(?(DEFINE)(.*))Y)."
++    AXYZ
++
++"(?<=X(?(DEFINE)(Y))(?1))."
++    AXYZ
++
+ # End of testinput1 
+diff --git a/testdata/testinput2 b/testdata/testinput2
+index 655e519..7f70860 100644
+--- a/testdata/testinput2
++++ b/testdata/testinput2
+@@ -5772,4 +5772,8 @@ a)"xI
+ /(a)?a/I
+     manm
+ 
++# Expect non-fixed-length error
++
++"(?<=X(?(DEFINE)(.*))(?1))."
++
+ # End of testinput2
+diff --git a/testdata/testoutput1 b/testdata/testoutput1
+index ad2175b..dfb6366 100644
+--- a/testdata/testoutput1
++++ b/testdata/testoutput1
+@@ -10112,4 +10112,21 @@ No match
+  1: a
+  2: c
+ 
++"(?<=X(?(DEFINE)(A)))X(*F)"
++\= Expect no match
++    AXYZ
++No match
++
++"(?<=X(?(DEFINE)(A)))."
++    AXYZ
++ 0: Y
++
++"(?<=X(?(DEFINE)(.*))Y)."
++    AXYZ
++ 0: Z
++
++"(?<=X(?(DEFINE)(Y))(?1))."
++    AXYZ
++ 0: Z
++
+ # End of testinput1 
+diff --git a/testdata/testoutput2 b/testdata/testoutput2
+index c733c12..69d1a7b 100644
+--- a/testdata/testoutput2
++++ b/testdata/testoutput2
+@@ -17435,6 +17435,11 @@ Subject length lower bound = 1
+     manm
+  0: a
+ 
++# Expect non-fixed-length error
++
++"(?<=X(?(DEFINE)(.*))(?1))."
++Failed: error 125 at offset 0: lookbehind assertion is not fixed length
++
+ # End of testinput2
+ Error -70: PCRE2_ERROR_BADDATA (unknown error number)
+ Error -62: bad serialized data
+-- 
+2.21.1
+

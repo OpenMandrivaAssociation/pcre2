@@ -24,6 +24,29 @@ URL:		http://www.pcre.org/
 Source0:	https://ftp.pcre.org/pub/pcre/%{name}-%{version}.zip
 # Do no set RPATH if libdir is not /usr/lib
 Patch0:		pcre2-10.10-Fix-multilib.patch
+# Fix JIT to respect NOTEMPTY options, upstream bug #2473,
+# in upstream after 10.34
+Patch1:		pcre2-10.34-Use-PCRE2_MATCH_EMPTY-flag-to-detect-empty-matches-i.patch
+# Fix a crash in pcre2_jit_compile when passing a NULL code argument,
+# upstream bug #2487, in upstream after 10.34
+Patch2:		pcre2-10.34-Fix-the-too-early-access-of-the-fields-of-a-compiled.patch
+# Fix a crash in JITted code when a *THEN verb is used in a lookahead assertion,
+# upstream bug #2510, in upstream after 10.34
+Patch3:		pcre2-10.34-Fix-THEN-verbs-in-lookahead-assertions-in-JIT.patch
+# Fix a memory leak when allocating a JIT stack fails, in upstream after 10.34
+Patch4:		pcre2-10.34-The-JIT-stack-should-be-freed-when-the-low-level-sta.patch
+# Ensure a newline after the final line in a file is output by pcre2grep,
+# upstream bug #2513, in upstream after 10.34
+Patch5:		pcre2-10.34-Ensure-a-newline-after-the-final-line-in-a-file-is-o.patch
+# Fix processing (?(DEFINE)...) within look-behind assertions,
+# in upstream after 10.34
+Patch6:		pcre2-10.34-Fix-bug-in-processing-DEFINE-.-within-lookbehind-ass.patch
+# Prevent from a stack exhaustion when studying a pattern for nested groups by
+# putting a limit of 1000 recursive calls, in upstream after 10.34
+Patch7:		pcre2-10.34-Limit-function-recursion-in-pcre2_study-to-avoid-sta.patch
+# Fix restoring a verb chain list when exiting a JIT-compiled recursive
+# function, in upstream after 10.34
+Patch8:		pcre2-10.34-Fix-control-verb-chain-restoration-issue-in-JIT.patch
 BuildRequires:	pkgconfig(readline)
 BuildRequires:	pkgconfig(bzip2)
 BuildRequires:	pkgconfig(zlib)
@@ -178,7 +201,7 @@ LDFLAGS="%{ldflags} -fprofile-instr-generate" \
 
 %make_build
 
-make check
+make check VERBOSE=yes
 
 unset LD_LIBRARY_PATH
 unset LLVM_PROFILE_FILE

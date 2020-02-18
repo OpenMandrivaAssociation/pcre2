@@ -1,0 +1,55 @@
+From a6749bb6c7c6fbfe849fb7e4e8dcf9d0e767d3e4 Mon Sep 17 00:00:00 2001
+From: zherczeg <zherczeg@6239d852-aaf2-0410-a92c-79f79f948069>
+Date: Mon, 10 Feb 2020 10:18:01 +0000
+Subject: [PATCH] Fix control verb chain restoration issue in JIT.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+git-svn-id: svn://vcs.exim.org/pcre2/code/trunk@1217 6239d852-aaf2-0410-a92c-79f79f948069
+Petr Písař: Ported to 10.34.
+---
+ src/pcre2_jit_compile.c | 8 ++++----
+ src/pcre2_jit_test.c    | 1 +
+
+diff --git a/src/pcre2_jit_compile.c b/src/pcre2_jit_compile.c
+index 7874fac..10665a8 100644
+--- a/src/pcre2_jit_compile.c
++++ b/src/pcre2_jit_compile.c
+@@ -2693,8 +2693,8 @@ while (cc < ccend)
+       }
+     if (common->control_head_ptr != 0 && !control_head_found)
+       {
+-      shared_srcw[0] = common->control_head_ptr;
+-      shared_count = 1;
++      private_srcw[0] = common->control_head_ptr;
++      private_count = 1;
+       control_head_found = TRUE;
+       }
+     cc += 1 + 2 + cc[1];
+@@ -2704,8 +2704,8 @@ while (cc < ccend)
+     SLJIT_ASSERT(common->control_head_ptr != 0);
+     if (!control_head_found)
+       {
+-      shared_srcw[0] = common->control_head_ptr;
+-      shared_count = 1;
++      private_srcw[0] = common->control_head_ptr;
++      private_count = 1;
+       control_head_found = TRUE;
+       }
+     cc++;
+diff --git a/src/pcre2_jit_test.c b/src/pcre2_jit_test.c
+index a188724..187e565 100644
+--- a/src/pcre2_jit_test.c
++++ b/src/pcre2_jit_test.c
+@@ -861,6 +861,7 @@ static struct regression_test_case regression_test_cases[] = {
+ 	{ MU, A, 0, 0 | F_NOMATCH, "(?(?=a)a(*THEN)b|ad)", "ad" },
+ 	{ MU, A, 0, 0, "(?!(?(?=a)ab|b(*THEN)d))bn|bnn", "bnn" },
+ 	{ MU, A, 0, 0, "(?=(*THEN: ))* ", " " },
++	{ MU, A, 0, 0, "a(*THEN)(?R) |", "a" },
+ 
+ 	/* Recurse and control verbs. */
+ 	{ MU, A, 0, 0, "(a(*ACCEPT)b){0}a(?1)b", "aacaabb" },
+-- 
+2.21.1
+

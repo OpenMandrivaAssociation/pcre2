@@ -1,0 +1,43 @@
+From 5e6a7641c60a1fcee8ae445be3511ce398c0baaa Mon Sep 17 00:00:00 2001
+From: zherczeg <zherczeg@6239d852-aaf2-0410-a92c-79f79f948069>
+Date: Sat, 11 Jan 2020 15:28:15 +0000
+Subject: [PATCH] Fix *THEN verbs in lookahead assertions in JIT.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+git-svn-id: svn://vcs.exim.org/pcre2/code/trunk@1204 6239d852-aaf2-0410-a92c-79f79f948069
+Petr Písař: Ported to 10.34.
+---
+ src/pcre2_jit_compile.c | 3 ++-
+ src/pcre2_jit_test.c    | 1 +
+
+diff --git a/src/pcre2_jit_compile.c b/src/pcre2_jit_compile.c
+index 78b94c1..00d13f1 100644
+--- a/src/pcre2_jit_compile.c
++++ b/src/pcre2_jit_compile.c
+@@ -9597,7 +9597,8 @@ if (opcode == OP_ASSERT || opcode == OP_ASSERTBACK)
+         }
+       else
+         {
+-        OP1(SLJIT_MOV, STR_PTR, 0, SLJIT_MEM1(STACK_TOP), 0);
++        SLJIT_ASSERT(extrasize == 3);
++        OP1(SLJIT_MOV, STR_PTR, 0, SLJIT_MEM1(STACK_TOP), STACK(-1));
+         OP1(SLJIT_MOV, SLJIT_MEM1(STACK_TOP), STACK(0), bra == OP_BRAZERO ? STR_PTR : SLJIT_IMM, 0);
+         }
+       }
+diff --git a/src/pcre2_jit_test.c b/src/pcre2_jit_test.c
+index e0638ef..a188724 100644
+--- a/src/pcre2_jit_test.c
++++ b/src/pcre2_jit_test.c
+@@ -860,6 +860,7 @@ static struct regression_test_case regression_test_cases[] = {
+ 	{ MU, A, 0, 0, "(?(?!a(*THEN)b)ad|add)", "add" },
+ 	{ MU, A, 0, 0 | F_NOMATCH, "(?(?=a)a(*THEN)b|ad)", "ad" },
+ 	{ MU, A, 0, 0, "(?!(?(?=a)ab|b(*THEN)d))bn|bnn", "bnn" },
++	{ MU, A, 0, 0, "(?=(*THEN: ))* ", " " },
+ 
+ 	/* Recurse and control verbs. */
+ 	{ MU, A, 0, 0, "(a(*ACCEPT)b){0}a(?1)b", "aacaabb" },
+-- 
+2.21.1
+

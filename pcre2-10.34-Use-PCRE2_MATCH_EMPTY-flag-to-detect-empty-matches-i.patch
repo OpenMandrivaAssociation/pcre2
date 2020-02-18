@@ -1,0 +1,44 @@
+From 037a7a81a46898c61e780cd23feddbae73b87839 Mon Sep 17 00:00:00 2001
+From: zherczeg <zherczeg@6239d852-aaf2-0410-a92c-79f79f948069>
+Date: Thu, 28 Nov 2019 11:35:08 +0000
+Subject: [PATCH] Use PCRE2_MATCH_EMPTY flag to detect empty matches in JIT.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+git-svn-id: svn://vcs.exim.org/pcre2/code/trunk@1190 6239d852-aaf2-0410-a92c-79f79f948069
+Petr Písař: Ported to 10.34.
+---
+ src/pcre2_jit_compile.c | 4 ++--
+ src/pcre2_jit_test.c    | 1 +
+
+diff --git a/src/pcre2_jit_compile.c b/src/pcre2_jit_compile.c
+index f564127..1d64536 100644
+--- a/src/pcre2_jit_compile.c
++++ b/src/pcre2_jit_compile.c
+@@ -13122,8 +13122,8 @@ common->read_only_data_head = NULL;
+ common->fcc = tables + fcc_offset;
+ common->lcc = (sljit_sw)(tables + lcc_offset);
+ common->mode = mode;
+-common->might_be_empty = re->minlength == 0;
+-common->allow_empty_partial = (re->max_lookbehind > 0) || (re->flags & PCRE2_MATCH_EMPTY) != 0;
++common->might_be_empty = (re->minlength == 0) || (re->flags & PCRE2_MATCH_EMPTY);
++common->allow_empty_partial = (re->max_lookbehind > 0) || (re->flags & PCRE2_MATCH_EMPTY);
+ common->nltype = NLTYPE_FIXED;
+ switch(re->newline_convention)
+   {
+diff --git a/src/pcre2_jit_test.c b/src/pcre2_jit_test.c
+index a9b3880..e0638ef 100644
+--- a/src/pcre2_jit_test.c
++++ b/src/pcre2_jit_test.c
+@@ -638,6 +638,7 @@ static struct regression_test_case regression_test_cases[] = {
+ 	{ MU, A, 0, 0, "(?=(?:x|ab(*ACCEPT)b))", "ab" },
+ 	{ MU, A, 0, 0, "(?=(a(b(*ACCEPT)b)))a", "ab" },
+ 	{ MU, A, PCRE2_NOTEMPTY, 0, "(?=a*(*ACCEPT))c", "c" },
++	{ MU, A, PCRE2_NOTEMPTY, 0 | F_NOMATCH, "(?=A)", "AB" },
+ 
+ 	/* Conditional blocks. */
+ 	{ MU, A, 0, 0, "(?(?=(a))a|b)+k", "ababbalbbadabak" },
+-- 
+2.21.0
+
