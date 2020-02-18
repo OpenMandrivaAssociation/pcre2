@@ -205,7 +205,7 @@ make check VERBOSE=yes
 
 unset LD_LIBRARY_PATH
 unset LLVM_PROFILE_FILE
-llvm-profdata merge --output=%{name}.profile *.profile.d
+llvm-profdata merge --output=%{name}.profile $(find . -type f -name "*.profile.d")
 rm -f *.profile.d
 
 make clean
