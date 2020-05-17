@@ -1,11 +1,25 @@
+# pcre is used by glib2.0, which in turn is used by wine
+# Chances are they'll switch to pcre2 at some time, so let's
+# provide it already
+%ifarch %{x86_64}
+%bcond_without compat32
+%else
+%bcond_with compat32
+%endif
+
 %define major 2
 %define umajor 0
 %define oldposixlib %mklibname pcre2-posix 1
 %define posixlib %mklibname pcre2-posix %{major}
+%define posixlib32 libpcre2-posix%{major}
 %define u8lib %mklibname pcre2-8 %{umajor}
+%define u8lib32 libpcre2-8_%{umajor}
 %define u16lib %mklibname pcre2-16 %{umajor}
+%define u16lib32 libpcre2-16_%{umajor}
 %define u32lib %mklibname pcre2-32 %{umajor}
+%define u32lib32 libpcre2-32_%{umajor}
 %define dev %mklibname -d pcre2
+%define dev32 libpcre2-devel
 %define static %mklibname -d -s pcre2
 
 %bcond_without pgo
@@ -15,13 +29,13 @@
 
 Name:		pcre2
 Version:	10.35
-Release:	1
+Release:	2
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
 License:	BSD
 URL:		http://www.pcre.org/
-Source0:	https://ftp.pcre.org/pub/pcre/%{name}-%{version}.zip
+Source0:	https://ftp.pcre.org/pub/pcre/%{name}-%{version}.tar.bz2
 # Do no set RPATH if libdir is not /usr/lib
 Patch0:		pcre2-10.10-Fix-multilib.patch
 BuildRequires:	pkgconfig(readline)
@@ -132,6 +146,64 @@ Static library for linking to PCRE2.
 %files -n %{static}
 %{_libdir}/*.a
 
+%if %{with compat32}
+%package -n %{posixlib32}
+Summary:	Version of the PCRE2 library providing a POSIX-like regex API (32-bit)
+Group:		System/Libraries
+
+%description -n %{posixlib32}
+Version of the PCRE2 library providing a POSIX-like regex API. (32-bit)
+
+%files -n %{posixlib32}
+%{_prefix}/lib/libpcre2-posix.so.%{major}*
+
+%package -n %{u8lib32}
+Summary:	UTF-8 version of the PCRE2 library (32-bit)
+Group:		System/Libraries
+
+%description -n %{u8lib32}
+UTF-8 version of the PCRE2 library. (32-bit)
+
+%files -n %{u8lib32}
+%{_prefix}/lib/libpcre2-8.so.%{umajor}*
+
+%package -n %{u16lib32}
+Summary:	UTF-16 version of the PCRE2 library (32-bit)
+Group:		System/Libraries
+
+%description -n %{u16lib32}
+UTF-16 version of the PCRE2 library. (32-bit)
+
+%files -n %{u16lib32}
+%{_prefix}/lib/libpcre2-16.so.%{umajor}*
+
+%package -n %{u32lib32}
+Summary:	UTF-32 version of the PCRE2 library (32-bit)
+Group:		System/Libraries
+
+%description -n %{u32lib32}
+UTF-32 version of the PCRE2 library. (32-bit)
+
+%files -n %{u32lib32}
+%{_prefix}/lib/libpcre2-32.so.%{umajor}*
+
+%package -n %{dev32}
+Summary:	Development files for the PCRE2 library (32-bit)
+Group:		Development/C
+Requires:	%{posixlib32} = %{EVRD}
+Requires:	%{u8lib32} = %{EVRD}
+Requires:	%{u16lib32} = %{EVRD}
+Requires:	%{u32lib32} = %{EVRD}
+Requires:	%{dev} = %{EVRD}
+
+%description -n %{dev32}
+Development files for the PCRE2 library. (32-bit)
+
+%files -n %{dev32}
+%{_prefix}/lib/*.so
+%{_prefix}/lib/pkgconfig/*
+%endif
+
 %prep
 %autosetup -p1 -n %{name}-%{myversion}
 
@@ -140,6 +212,48 @@ libtoolize --copy --force
 autoreconf -vif
 
 %build
+export CONFIGURE_TOP="`pwd`"
+%if %{with compat32}
+mkdir build32
+cd build32
+%configure32 \
+%ifarch riscv64
+    --disable-jit \
+    --disable-pcre2grep-jit \
+%else
+    --enable-jit \
+    --enable-pcre2grep-jit \
+%endif
+    --disable-bsr-anycrlf \
+    --disable-coverage \
+    --disable-ebcdic \
+    --disable-fuzz-support \
+    --disable-never-backslash-C \
+    --enable-newline-is-lf \
+    --enable-pcre2-8 \
+    --enable-pcre2-16 \
+    --enable-pcre2-32 \
+    --enable-unicode \
+    --enable-pcre2grep-callout \
+    --enable-pcre2grep-jit \
+    --disable-pcre2grep-libbz2 \
+    --disable-pcre2grep-libz \
+    --disable-pcre2test-libedit \
+    --disable-pcre2test-libreadline \
+    --disable-rebuild-chartables \
+    --enable-percent-zt \
+    --enable-shared \
+    --enable-stack-for-recursion \
+    --disable-static \
+    --enable-unicode \
+    --disable-valgrind
+%make_build
+cd ..
+%endif
+
+mkdir build
+cd build
+
 %if %{with pgo}
 CFLAGS="%{optflags} -fprofile-instr-generate" \
 CXXFLAGS="%{optflags} -fprofile-instr-generate" \
@@ -178,10 +292,10 @@ LDFLAGS="%{ldflags} -fprofile-instr-generate" \
 
 %make_build
 
+export LLVM_PROFILE_FILE=pcre-%p.profile.d
 make check VERBOSE=yes
-
-unset LD_LIBRARY_PATH
 unset LLVM_PROFILE_FILE
+
 llvm-profdata merge --output=%{name}.profile $(find . -type f -name "*.profile.d")
 rm -f *.profile.d
 
@@ -226,9 +340,15 @@ LDFLAGS="%{ldflags} -fprofile-instr-use=$(realpath %{name}.profile)" \
 %make_build
 
 %install
-%make_install
+%if %{with compat32}
+%make_install -C build32
+%endif
+%make_install -C build
 # These are handled by %%doc in %%files
 rm -rf %{buildroot}%{_docdir}/pcre2
 
 %check
-make check VERBOSE=yes
+%if %{with compat32}
+make -C build32 check VERBOSE=yes
+%endif
+make -C build check VERBOSE=yes
