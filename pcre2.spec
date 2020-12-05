@@ -28,8 +28,8 @@
 %global optflags %{optflags} -O3
 
 Name:		pcre2
-Version:	10.35
-Release:	2
+Version:	10.36
+Release:	1
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
