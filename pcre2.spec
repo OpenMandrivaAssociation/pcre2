@@ -7,7 +7,7 @@
 %bcond_with compat32
 %endif
 
-%define major 2
+%define major 3
 %define umajor 0
 %define oldposixlib %mklibname pcre2-posix 1
 %define posixlib %mklibname pcre2-posix %{major}
@@ -28,7 +28,7 @@
 %global optflags %{optflags} -O3
 
 Name:		pcre2
-Version:	10.36
+Version:	10.37
 Release:	1
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
