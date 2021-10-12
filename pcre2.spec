@@ -22,7 +22,7 @@
 %define dev32 libpcre2-devel
 %define static %mklibname -d -s pcre2
 
-%bcond_without pgo
+%bcond_with pgo
 
 # (tpg) optimize a bit
 %global optflags %{optflags} -O3
