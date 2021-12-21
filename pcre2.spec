@@ -22,14 +22,14 @@
 %define dev32 libpcre2-devel
 %define static %mklibname -d -s pcre2
 
-%bcond_with pgo
+%bcond_without pgo
 
 # (tpg) optimize a bit
 %global optflags %{optflags} -O3
 
 Name:		pcre2
 Version:	10.37
-Release:	1
+Release:	2
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
@@ -63,8 +63,8 @@ restricted, and does not give full access to all of PCRE2's facilities.
 %files
 %{_bindir}/pcre2grep
 %{_bindir}/pcre2test
-%{_mandir}/man1/pcre2grep.*
-%{_mandir}/man1/pcre2test.*
+%doc %{_mandir}/man1/pcre2grep.*
+%doc %{_mandir}/man1/pcre2test.*
 
 %package -n %{posixlib}
 Summary:	Version of the PCRE2 library providing a POSIX-like regex API
@@ -129,8 +129,8 @@ Development files for the PCRE2 library.
 %{_libdir}/*.so
 %{_includedir}/*.h
 %{_libdir}/pkgconfig/*
-%{_mandir}/man1/pcre2-config.*
-%{_mandir}/man3/*
+%doc %{_mandir}/man1/pcre2-config.*
+%doc %{_mandir}/man3/*
 %{_bindir}/pcre2-config
 %doc doc/*.txt doc/html
 %doc README HACKING ./src/pcre2demo.c
@@ -212,7 +212,7 @@ libtoolize --copy --force
 autoreconf -vif
 
 %build
-export CONFIGURE_TOP="`pwd`"
+export CONFIGURE_TOP="$(pwd)"
 %if %{with compat32}
 mkdir build32
 cd build32
@@ -255,9 +255,9 @@ mkdir build
 cd build
 
 %if %{with pgo}
-CFLAGS="%{optflags} -fprofile-instr-generate" \
-CXXFLAGS="%{optflags} -fprofile-instr-generate" \
-LDFLAGS="%{ldflags} -fprofile-instr-generate" \
+CFLAGS="%{optflags} -fprofile-generate -mllvm -vp-counters-per-site=64" \
+CXXFLAGS="%{optflags} -fprofile-generate" \
+LDFLAGS="%{build_ldflags} -fprofile-generate" \
 %configure \
 %ifarch riscv64
     --disable-jit \
@@ -292,18 +292,17 @@ LDFLAGS="%{ldflags} -fprofile-instr-generate" \
 
 %make_build
 
-export LLVM_PROFILE_FILE=pcre-%p.profile.d
-make check VERBOSE=yes
-unset LLVM_PROFILE_FILE
+make check VERBOSE=yes ||:
 
-llvm-profdata merge --output=%{name}.profile $(find . -type f -name "*.profile.d")
-rm -f *.profile.d
+llvm-profdata merge --output=%{name}-llvm.profdata $(find . -name "*.profraw" -type f)
+PROFDATA="$(realpath %{name}-llvm.profdata)"
+rm -f *.profraw
 
 make clean
 
-CFLAGS="%{optflags} -fprofile-instr-use=$(realpath %{name}.profile)" \
-CXXFLAGS="%{optflags} -fprofile-instr-use=$(realpath %{name}.profile)" \
-LDFLAGS="%{ldflags} -fprofile-instr-use=$(realpath %{name}.profile)" \
+CFLAGS="%{optflags} -fprofile-use=$PROFDATA" \
+CXXFLAGS="%{optflags} -fprofile-use=$PROFDATA" \
+LDFLAGS="%{build_ldflags} -fprofile-use=$PROFDATA" \
 %endif
 %configure \
 %ifarch riscv64
