@@ -28,14 +28,14 @@
 %global optflags %{optflags} -O3
 
 Name:		pcre2
-Version:	10.37
-Release:	2
+Version:	10.40
+Release:	1
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
 License:	BSD
 URL:		http://www.pcre.org/
-Source0:	https://ftp.pcre.org/pub/pcre/%{name}-%{version}.tar.bz2
+Source0:	https://github.com/PCRE2Project/pcre2/releases/download/%{name}-%{version}/%{name}-%{version}.tar.bz2
 # Do no set RPATH if libdir is not /usr/lib
 Patch0:		pcre2-10.10-Fix-multilib.patch
 BuildRequires:	pkgconfig(readline)
@@ -150,6 +150,7 @@ Static library for linking to PCRE2.
 %package -n %{posixlib32}
 Summary:	Version of the PCRE2 library providing a POSIX-like regex API (32-bit)
 Group:		System/Libraries
+BuildRequires:	libc6
 
 %description -n %{posixlib32}
 Version of the PCRE2 library providing a POSIX-like regex API. (32-bit)
