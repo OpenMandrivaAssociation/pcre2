@@ -29,7 +29,7 @@
 
 Name:		pcre2
 Version:	10.40
-Release:	1
+Release:	2
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
@@ -138,6 +138,7 @@ Development files for the PCRE2 library.
 %package -n %{static}
 Summary:	Static library for linking to PCRE2
 Group:		Development/C
+Provides:	%{name}-static-devel = %{EVRD}
 Requires:	%{dev} = %{EVRD}
 
 %description -n %{static}
