@@ -29,7 +29,7 @@
 
 Name:		pcre2
 Version:	10.42
-Release:	1
+Release:	2
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
