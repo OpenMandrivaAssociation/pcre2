@@ -22,7 +22,11 @@
 %define dev32 libpcre2-devel
 %define static %mklibname -d -s pcre2
 
+%if %{cross_compiling}
+%bcond_with pgo
+%else
 %bcond_without pgo
+%endif
 
 # (tpg) optimize a bit
 %global optflags %{optflags} -O3
@@ -348,8 +352,10 @@ LDFLAGS="%{build_ldflags} -fprofile-use=$PROFDATA" \
 # These are handled by %%doc in %%files
 rm -rf %{buildroot}%{_docdir}/pcre2
 
+%if ! %{cross_compiling}
 %check
 %if %{with compat32}
 make -C build32 check VERBOSE=yes
 %endif
 make -C build check VERBOSE=yes
+%endif
