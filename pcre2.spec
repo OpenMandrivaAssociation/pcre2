@@ -7,6 +7,13 @@
 %bcond_with compat32
 %endif
 
+# Workaround for libtool being a broken mess if CC contains
+# whitespace (as in "clang -target riscv64-openmandriva-linux-gnu",
+# but not "riscv64-openmandriva-linux-gnu-gcc")
+%if %{cross_compiling}
+%define prefer_gcc 1
+%endif
+
 %define major 3
 %define umajor 0
 %define oldposixlib %mklibname pcre2-posix 1
