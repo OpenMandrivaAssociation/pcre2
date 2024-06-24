@@ -39,13 +39,13 @@
 %global optflags %{optflags} -O3
 
 Name:		pcre2
-Version:	10.43
+Version:	10.44
 Release:	1
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
 License:	BSD
-URL:		http://www.pcre.org/
+URL:		https://www.pcre.org/
 Source0:	https://github.com/PCRE2Project/pcre2/releases/download/%{name}-%{version}/%{name}-%{version}.tar.bz2
 # Do no set RPATH if libdir is not /usr/lib
 Patch0:		pcre2-10.10-Fix-multilib.patch
