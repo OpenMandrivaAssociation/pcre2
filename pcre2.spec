@@ -7,6 +7,12 @@
 %bcond_with compat32
 %endif
 
+# Workaround for `relocation R_X86_64_PC32 out of range` error at
+# link time with clang 19.1.7
+%ifarch %{x86_64}
+%global _disable_lto 1
+%endif
+
 # Workaround for libtool being a broken mess if CC contains
 # whitespace (as in "clang -target riscv64-openmandriva-linux-gnu",
 # but not "riscv64-openmandriva-linux-gnu-gcc")
@@ -39,7 +45,7 @@
 %global optflags %{optflags} -O3
 
 Name:		pcre2
-Version:	10.44
+Version:	10.45
 Release:	1
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
@@ -52,6 +58,7 @@ Patch0:		pcre2-10.10-Fix-multilib.patch
 BuildRequires:	pkgconfig(readline)
 BuildRequires:	pkgconfig(bzip2)
 BuildRequires:	pkgconfig(zlib)
+BuildRequires:	slibtool
 
 %description
 PCRE2 is a re-working of the original PCRE (Perl-compatible regular
@@ -221,7 +228,7 @@ Development files for the PCRE2 library. (32-bit)
 %autosetup -p1 -n %{name}-%{myversion}
 
 # Because of multilib patch
-libtoolize --copy --force
+slibtoolize --copy --force
 autoreconf -vif
 
 %build
