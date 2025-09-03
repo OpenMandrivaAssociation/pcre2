@@ -45,7 +45,7 @@
 %global optflags %{optflags} -O3
 
 Name:		pcre2
-Version:	10.45
+Version:	10.46
 Release:	1
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
