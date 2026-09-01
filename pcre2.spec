@@ -249,13 +249,78 @@ cd _OMV_rpm_build
 %make_build LIBTOOL=slibtool
 cd ..
 
-# Test suite is a representative training set for this branch-heavy matcher.
+# make check is a correctness suite (API corners, error diagnostics, limits)
+# and would weight PGO toward rare paths. Train on grep-like scans of the
+# source corpus and high-iteration matches of common patterns instead.
 # Skipped automatically on cross-compile.
 %pgo
+pcre2_pgo_train() {
+	local b="$1"
+	local g="$b/pcre2grep"
+	local t="$b/pcre2test"
+	local in="$b/pgo-train.in"
+	local p w
+	[ -x "$g" ] && [ -x "$t" ] || return 0
+
+	# File-scan path (JIT pcre2grep): identifiers, numbers, keywords,
+	# includes, URLs, mail-ish, log tokens, whitespace.
+	for p in \
+		'[A-Za-z_][A-Za-z0-9_]*' \
+		'[0-9]+' \
+		'0x[0-9A-Fa-f]+' \
+		'\b(if|while|for|return|static|const|struct)\b' \
+		'^#\s*include' \
+		'https?://[[:alnum:]./_~-]+' \
+		'[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' \
+		'(error|warning|fail|FIXME|TODO)' \
+		'.{0,40}pcre2' \
+		'\s+'
+	do
+		"$g" -q -r --include='\.(c|h)$' -- "$p" src ||:
+		"$g" -q -- "$p" testdata/grepinput ||:
+	done
+	"$g" -q -ri --include='\.(c|h)$' -- '\b[a-z]+\b' src ||:
+	"$g" -q -u -r --include='\.(c|h|txt)$' -- '\w+' src doc ||:
+
+	# Subjects must start with whitespace; do not put that indent in the
+	# spec (rpmbuild strips leading whitespace from script lines).
+	{
+		echo '/^[A-Za-z_][A-Za-z0-9_]*$/'
+		echo ' identifier'
+		echo ' foo_bar123'
+		echo ' Not an identifier!'
+		echo '/\b\d{1,3}(\.\d{1,3}){3}\b/'
+		echo ' host 10.0.0.1 ready'
+		echo ' no address here'
+		echo '/\b(error|warning|info|debug)\b/i'
+		echo ' Error: disk full'
+		echo ' this is a warning'
+		echo ' nothing to see'
+		echo '/https?:\/\/[[:alnum:].\/_~-]+/'
+		echo ' see https://www.pcre.org/ for docs'
+		echo ' no url'
+		echo '/[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/'
+		echo ' mail bero@example.com please'
+		echo ' not mail'
+		echo '/^#\s*(define|include|ifdef)\b/'
+		echo ' #include <stdio.h>'
+		echo ' #define FOO 1'
+		echo ' int x;'
+	} > "$in"
+
+	# Match hot path, all three widths: compile once, match many times.
+	# testdata/testinput1 and testinput4 are the Perl-compatible matching
+	# suites, not the error/API tests.
+	for w in '' -16 -32; do
+		"$t" $w -q -jit -tm 20000 "$in" /dev/null ||:
+		"$t" $w -q -jit testdata/testinput1 /dev/null ||:
+		"$t" $w -q -jit testdata/testinput4 /dev/null ||:
+	done
+}
 %if %{with compat32}
-make -C _OMV_rpm_build32 check VERBOSE=yes LIBTOOL=slibtool-shared ||:
+pcre2_pgo_train _OMV_rpm_build32
 %endif
-make -C _OMV_rpm_build check VERBOSE=yes LIBTOOL=slibtool ||:
+pcre2_pgo_train _OMV_rpm_build
 
 %install
 %if %{with compat32}
