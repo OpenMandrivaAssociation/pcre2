@@ -1,2 +1,4 @@
 from Config import *
 addFilter("spelling-error .* encodings");
+# pcre2-config still has SunOS/BSD RPATH branches; they are not used on Linux
+addFilter("rpath-in-buildconfig .*pcre2-config");

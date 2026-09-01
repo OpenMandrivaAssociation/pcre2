@@ -1,16 +1,7 @@
-# pcre is used by glib2.0, which in turn is used by wine
-# Chances are they'll switch to pcre2 at some time, so let's
-# provide it already
 %ifarch %{x86_64}
 %bcond_without compat32
 %else
 %bcond_with compat32
-%endif
-
-# Workaround for `relocation R_X86_64_PC32 out of range` error at
-# link time with clang 19.1.7
-%ifarch %{x86_64}
-%global _disable_lto 1
 %endif
 
 # Workaround for libtool being a broken mess if CC contains
@@ -18,6 +9,14 @@
 # but not "riscv64-openmandriva-linux-gnu-gcc")
 %if %{cross_compiling}
 %define prefer_gcc 1
+%endif
+
+# -O3: matching is a hot path in many dependents
+# -vp-counters-per-site: the interpreter has huge functions that overflow
+# Clang's default PGO value-profile counters
+%global optflags %{optflags} -O3
+%if ! %{cross_compiling}
+%global optflags %{optflags} -mllvm -vp-counters-per-site=64
 %endif
 
 %define major 3
@@ -35,17 +34,13 @@
 %define dev32 libpcre2-devel
 %define static %mklibname -d -s pcre2
 
-%if %{cross_compiling}
-%bcond_with pgo
-%else
-%bcond_without pgo
-%endif
-
-# (tpg) optimize a bit
-%global optflags %{optflags} -O3
+# Shared configure options (non-default only). --enable-jit=auto turns JIT
+# on wherever sljit supports the CPU, including RISC-V.
+# Must stay a single line so it is appended to %%configure / %%configure32.
+%define pcre2_configure_opts --enable-jit=auto --enable-pcre2-16 --enable-pcre2-32
 
 Name:		pcre2
-Version:	10.47
+Version:	10.48
 Release:	1
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
@@ -53,16 +48,12 @@ Group:		System/Libraries
 License:	BSD
 URL:		https://www.pcre.org/
 Source0:	https://github.com/PCRE2Project/pcre2/releases/download/%{name}-%{version}/%{name}-%{version}.tar.bz2
-# Do no set RPATH if libdir is not /usr/lib
-Patch0:		pcre2-10.10-Fix-multilib.patch
-BuildRequires:	autoconf
-BuildRequires:	automake
-BuildRequires:	libtool-base
+BuildRequires:	slibtool
 BuildRequires:	make
 BuildRequires:	pkgconfig(readline)
-BuildRequires:	pkgconfig(bzip2)
-BuildRequires:	pkgconfig(zlib)
-BuildRequires:	slibtool
+%if %{with compat32}
+BuildRequires:	libc6
+%endif
 
 %description
 PCRE2 is a re-working of the original PCRE (Perl-compatible regular
@@ -102,13 +93,6 @@ Version of the PCRE2 library providing a POSIX-like regex API.
 %package -n %{u8lib}
 Summary:	UTF-8 version of the PCRE2 library
 Group:		System/Libraries
-# GOT: julia-0.6.0-0.1.pre.alpha-omv2015.0.x86_64
-# GOT: lib64pcre2-8_0-10.31-2-omv2015.0.x86_64
-# In order to satisfy the 'libpcre2-8.so.0()(64bit)' dependency, one of the following packages is needed:
-# 1- julia-0.6.0-0.1.pre.alpha-omv2015.0.x86_64: High-level, high-performance dynamic language for technical computing (to install)
-# 2- lib64pcre2-8_0-10.31-2-omv2015.0.x86_64: UTF-8 version of the PCRE2 library (to install)
-# What is your choice? (1-2)
-Conflicts:	julia < 0.6.0-1
 
 %description -n %{u8lib}
 UTF-8 version of the PCRE2 library.
@@ -173,7 +157,6 @@ Static library for linking to PCRE2.
 %package -n %{posixlib32}
 Summary:	Version of the PCRE2 library providing a POSIX-like regex API (32-bit)
 Group:		System/Libraries
-BuildRequires:	libc6
 
 %description -n %{posixlib32}
 Version of the PCRE2 library providing a POSIX-like regex API. (32-bit)
@@ -231,149 +214,52 @@ Development files for the PCRE2 library. (32-bit)
 %prep
 %autosetup -p1 -n %{name}-%{myversion}
 
-# Because of multilib patch
-slibtoolize --copy --force
-autoreconf -vif
-
 %build
 export CONFIGURE_TOP="$(pwd)"
+
+# Use _OMV_rpm_build{,32} so the official %%pgo wipe keeps the sources.
 %if %{with compat32}
-mkdir build32
-cd build32
-%configure32 \
-%ifarch riscv64
-    --disable-jit \
-    --disable-pcre2grep-jit \
-%else
-    --enable-jit \
-    --enable-pcre2grep-jit \
+# Subshell: %%configure32 exports CFLAGS, and must not clobber PGO flags
+# for the 64-bit build. 32-bit Clang has no compiler-rt.profile.
+(
+	mkdir _OMV_rpm_build32
+	cd _OMV_rpm_build32
+	CFLAGS="$(printf '%s' "${CFLAGS:-%{optflags}}" | sed 's/ -fprofile-[^ ]*//g')"
+	CXXFLAGS="$(printf '%s' "${CXXFLAGS:-%{optflags}}" | sed 's/ -fprofile-[^ ]*//g')"
+	LDFLAGS="$(printf '%s' "${LDFLAGS:-%{?build_ldflags}}" | sed 's/ -fprofile-[^ ]*//g')"
+	export CFLAGS CXXFLAGS LDFLAGS
+	%configure32 \
+		%{pcre2_configure_opts}
+	%make_build LIBTOOL=slibtool-shared
+)
 %endif
-    --disable-bsr-anycrlf \
-    --disable-coverage \
-    --disable-ebcdic \
-    --disable-fuzz-support \
-    --disable-never-backslash-C \
-    --enable-newline-is-lf \
-    --enable-pcre2-8 \
-    --enable-pcre2-16 \
-    --enable-pcre2-32 \
-    --enable-unicode \
-    --enable-pcre2grep-callout \
-    --enable-pcre2grep-jit \
-    --disable-pcre2grep-libbz2 \
-    --disable-pcre2grep-libz \
-    --disable-pcre2test-libedit \
-    --disable-pcre2test-libreadline \
-    --disable-rebuild-chartables \
-    --enable-percent-zt \
-    --enable-shared \
-    --enable-stack-for-recursion \
-    --disable-static \
-    --enable-unicode \
-    --disable-valgrind
-%make_build
+
+mkdir _OMV_rpm_build
+cd _OMV_rpm_build
+%configure \
+	%{pcre2_configure_opts} \
+	--enable-static \
+	--enable-pcre2test-libreadline
+%make_build LIBTOOL=slibtool
 cd ..
-%endif
 
-mkdir build
-cd build
-
-%if %{with pgo}
-CFLAGS="%{optflags} -fprofile-generate -mllvm -vp-counters-per-site=64" \
-CXXFLAGS="%{optflags} -fprofile-generate" \
-LDFLAGS="%{build_ldflags} -fprofile-generate" \
-%configure \
-%ifarch riscv64
-    --disable-jit \
-    --disable-pcre2grep-jit \
-%else
-    --enable-jit \
-    --enable-pcre2grep-jit \
-%endif
-    --disable-bsr-anycrlf \
-    --disable-coverage \
-    --disable-ebcdic \
-    --disable-fuzz-support \
-    --disable-never-backslash-C \
-    --enable-newline-is-lf \
-    --enable-pcre2-8 \
-    --enable-pcre2-16 \
-    --enable-pcre2-32 \
-    --enable-unicode \
-    --enable-pcre2grep-callout \
-    --enable-pcre2grep-jit \
-    --disable-pcre2grep-libbz2 \
-    --disable-pcre2grep-libz \
-    --disable-pcre2test-libedit \
-    --enable-pcre2test-libreadline \
-    --disable-rebuild-chartables \
-    --enable-percent-zt \
-    --enable-shared \
-    --enable-stack-for-recursion \
-    --disable-static \
-    --enable-unicode \
-    --disable-valgrind
-
-%make_build
-
-make check VERBOSE=yes ||:
-
-llvm-profdata merge --output=%{name}-llvm.profdata $(find . -name "*.profraw" -type f)
-PROFDATA="$(realpath %{name}-llvm.profdata)"
-rm -f *.profraw
-
-make clean
-
-CFLAGS="%{optflags} -fprofile-use=$PROFDATA" \
-CXXFLAGS="%{optflags} -fprofile-use=$PROFDATA" \
-LDFLAGS="%{build_ldflags} -fprofile-use=$PROFDATA" \
-%endif
-%configure \
-%ifarch riscv64
-    --disable-jit \
-    --disable-pcre2grep-jit \
-%else
-    --enable-jit \
-    --enable-pcre2grep-jit \
-%endif
-    --disable-bsr-anycrlf \
-    --disable-coverage \
-    --disable-ebcdic \
-    --disable-fuzz-support \
-    --disable-never-backslash-C \
-    --enable-newline-is-lf \
-    --enable-pcre2-8 \
-    --enable-pcre2-16 \
-    --enable-pcre2-32 \
-    --enable-unicode \
-    --enable-pcre2grep-callout \
-    --enable-pcre2grep-jit \
-    --disable-pcre2grep-libbz2 \
-    --disable-pcre2grep-libz \
-    --disable-pcre2test-libedit \
-    --enable-pcre2test-libreadline \
-    --disable-rebuild-chartables \
-    --enable-percent-zt \
-    --enable-shared \
-    --enable-stack-for-recursion \
-    --enable-static \
-    --enable-unicode \
-    --disable-valgrind
-
-%make_build
+# Test suite is a representative training set for this branch-heavy matcher.
+# Skipped automatically on cross-compile. 32-bit is not instrumented.
+%pgo
+make -C _OMV_rpm_build check VERBOSE=yes LIBTOOL=slibtool ||:
 
 %install
 %if %{with compat32}
-%make_install -C build32
+%make_install -C _OMV_rpm_build32 LIBTOOL=slibtool-shared
 %endif
-%make_install -C build
+%make_install -C _OMV_rpm_build LIBTOOL=slibtool
 # These are handled by %%doc in %%files
 rm -rf %{buildroot}%{_docdir}/pcre2
 
 %if ! %{cross_compiling}
 %check
 %if %{with compat32}
-make -C build32 check VERBOSE=yes
+make -C _OMV_rpm_build32 check VERBOSE=yes LIBTOOL=slibtool-shared
 %endif
-make -C build check VERBOSE=yes
+make -C _OMV_rpm_build check VERBOSE=yes LIBTOOL=slibtool
 %endif
