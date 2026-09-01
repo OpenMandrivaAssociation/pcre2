@@ -53,6 +53,10 @@ BuildRequires:	make
 BuildRequires:	pkgconfig(readline)
 %if %{with compat32}
 BuildRequires:	libc6
+# 32-bit Clang PGO needs the i686 compiler-rt profile runtime
+BuildRequires:	cross-i686-openmandriva-linux-gnu-gcc
+BuildRequires:	cross-i686-openmandriva-linux-gnu-binutils
+BuildRequires:	cross-i686-openmandriva-linux-gnu-clang
 %endif
 
 %description
@@ -219,14 +223,15 @@ export CONFIGURE_TOP="$(pwd)"
 
 # Use _OMV_rpm_build{,32} so the official %%pgo wipe keeps the sources.
 %if %{with compat32}
-# Subshell: %%configure32 exports CFLAGS, and must not clobber PGO flags
-# for the 64-bit build. 32-bit Clang has no compiler-rt.profile.
+# Subshell: %%configure32 exports CFLAGS and must not leak -target to 64-bit.
+# cc -m32 looks for compiler-rt in i386-pc-linux-gnu; the profile runtime
+# from cross-i686-...-clang lives under i686-openmandriva-linux-gnu.
 (
 	mkdir _OMV_rpm_build32
 	cd _OMV_rpm_build32
-	CFLAGS="$(printf '%s' "${CFLAGS:-%{optflags}}" | sed 's/ -fprofile-[^ ]*//g')"
-	CXXFLAGS="$(printf '%s' "${CXXFLAGS:-%{optflags}}" | sed 's/ -fprofile-[^ ]*//g')"
-	LDFLAGS="$(printf '%s' "${LDFLAGS:-%{?build_ldflags}}" | sed 's/ -fprofile-[^ ]*//g')"
+	CFLAGS="${CFLAGS:-%{optflags}} -target i686-openmandriva-linux-gnu"
+	CXXFLAGS="${CXXFLAGS:-%{optflags}} -target i686-openmandriva-linux-gnu"
+	LDFLAGS="${LDFLAGS:-%{?build_ldflags}} -target i686-openmandriva-linux-gnu"
 	export CFLAGS CXXFLAGS LDFLAGS
 	%configure32 \
 		%{pcre2_configure_opts}
@@ -244,8 +249,11 @@ cd _OMV_rpm_build
 cd ..
 
 # Test suite is a representative training set for this branch-heavy matcher.
-# Skipped automatically on cross-compile. 32-bit is not instrumented.
+# Skipped automatically on cross-compile.
 %pgo
+%if %{with compat32}
+make -C _OMV_rpm_build32 check VERBOSE=yes LIBTOOL=slibtool-shared ||:
+%endif
 make -C _OMV_rpm_build check VERBOSE=yes LIBTOOL=slibtool ||:
 
 %install
