@@ -53,10 +53,11 @@ BuildRequires:	make
 BuildRequires:	pkgconfig(readline)
 %if %{with compat32}
 BuildRequires:	libc6
-# 32-bit Clang PGO needs the i686 compiler-rt profile runtime
+# 32-bit Clang PGO needs the i686 compiler-rt profile runtime and libatomic
 BuildRequires:	cross-i686-openmandriva-linux-gnu-gcc
 BuildRequires:	cross-i686-openmandriva-linux-gnu-binutils
 BuildRequires:	cross-i686-openmandriva-linux-gnu-clang
+BuildRequires:	atomic-devel
 %endif
 
 %description
