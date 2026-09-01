@@ -51,13 +51,17 @@ Source0:	https://github.com/PCRE2Project/pcre2/releases/download/%{name}-%{versi
 BuildRequires:	slibtool
 BuildRequires:	make
 BuildRequires:	pkgconfig(readline)
-%if %{with compat32}
-BuildRequires:	libc6
-# 32-bit Clang PGO needs the i686 compiler-rt profile runtime and libatomic
+# 32-bit compat + Clang PGO: compiler-rt.profile and libatomic live in the
+# i686 cross toolchain. Gate on arch, not %%with compat32, so mock always
+# installs them on x86_64/znver1.
+%ifarch %{x86_64}
 BuildRequires:	cross-i686-openmandriva-linux-gnu-gcc
 BuildRequires:	cross-i686-openmandriva-linux-gnu-binutils
 BuildRequires:	cross-i686-openmandriva-linux-gnu-clang
 BuildRequires:	atomic-devel
+%endif
+%if %{with compat32}
+BuildRequires:	libc6
 %endif
 
 %description
