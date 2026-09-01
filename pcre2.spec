@@ -55,13 +55,15 @@ BuildRequires:	pkgconfig(readline)
 # i686-*.cfg (--sysroot /usr/i686-openmandriva-linux-gnu). compiler-rt.profile
 # is in the cross clang package; CRT and headers are in cross libc; binutils
 # ships the usr -> ./ symlink so lld can resolve the sysroot libc.so script;
-# cross gcc provides libatomic / libgcc_s in that sysroot. Gate on arch, not
-# %%with compat32, so mock always installs them on x86_64/znver1.
+# kernel-headers supply linux/limits.h (pulled in by glibc limits.h/pthread);
+# atomic-devel ships both the 64-bit and 32-bit libatomic.so stubs. Gate on
+# arch, not %%with compat32, so mock always installs them on x86_64/znver1.
 %ifarch %{x86_64}
 BuildRequires:	cross-i686-openmandriva-linux-gnu-clang
 BuildRequires:	cross-i686-openmandriva-linux-gnu-gcc
 BuildRequires:	cross-i686-openmandriva-linux-gnu-binutils
 BuildRequires:	cross-i686-openmandriva-linux-gnu-libc
+BuildRequires:	cross-i686-openmandriva-linux-gnu-kernel-headers
 BuildRequires:	atomic-devel
 %endif
 %if %{with compat32}
