@@ -41,7 +41,7 @@
 
 Name:		pcre2
 Version:	10.48
-Release:	2
+Release:	3
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
