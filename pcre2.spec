@@ -40,8 +40,8 @@
 %define pcre2_configure_opts --enable-jit=auto --enable-pcre2-16 --enable-pcre2-32
 
 Name:		pcre2
-Version:	10.48
-Release:	4
+Version:	10.49
+Release:	1
 %global		myversion %{version}%{?rcversion:-%rcversion}
 Summary:	Perl-compatible regular expression library
 Group:		System/Libraries
